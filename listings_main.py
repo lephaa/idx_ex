@@ -207,5 +207,57 @@ print(
     .head(10)
 )
 
-df.to_csv("listing_analysis_ready.csv", index=False)
-print("Saved: listing_analysis_ready.csv")
+# Weeks 7: Outlier Detection (IQR)
+print("\nweeks 7")
+
+numeric_cols = ["ClosePrice", "LivingArea", "DaysOnMarket"]
+
+# store medians before filtering
+medians_before = {}
+
+for col in numeric_cols:
+    if col in df.columns:
+        medians_before[col] = df[col].median()
+
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+
+        lower = Q1 - 1.5 * IQR
+        upper = Q3 + 1.5 * IQR
+
+        # outlier flag
+        df[f"{col}_outlier_flag"] = (
+            (df[col] < lower) | (df[col] > upper)
+        )
+
+        print(f"{col} -> lower: {lower}, upper: {upper}")
+        print(f"{col} outliers:", df[f"{col}_outlier_flag"].sum())
+
+# combine all flags
+outlier_flags = [f"{col}_outlier_flag" for col in numeric_cols if col in df.columns]
+df["any_outlier_flag"] = df[outlier_flags].any(axis=1)
+
+# create filtered dataset 
+filtered_df = df[~df["any_outlier_flag"]].copy()
+
+# medians after filtering
+medians_after = {}
+for col in numeric_cols:
+    if col in filtered_df.columns:
+        medians_after[col] = filtered_df[col].median()
+
+# print comparison
+print("\n[Median Comparison]")
+for col in numeric_cols:
+    if col in medians_before:
+        print(f"{col}: before={medians_before[col]}, after={medians_after[col]}")
+
+print("\nRows before:", len(df))
+print("Rows after filtering:", len(filtered_df))
+
+df.to_csv("listing_flagged_dataset.csv", index=False)
+filtered_df.to_csv("listing_filtered_dataset.csv", index=False)
+
+print("Saved: listing_flagged_dataset.csv")
+print("Saved: listing_filtered_dataset.csv")
